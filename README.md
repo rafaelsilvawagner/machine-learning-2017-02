@@ -4,3 +4,5 @@ The datasets are'nt available here.
 The first Homework is based on the Famous Data-Set - "The 5 Universities"
 The comments are in brazilian portuguese.
 The Language is predominant R.
+
+The coauthor's of this codes are Pedro Zanchett, e Airan Possamai

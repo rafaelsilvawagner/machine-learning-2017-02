@@ -1,0 +1,91 @@
+words<-read.csv("C://Users//rwagn//Documents//R//Aprendizado de Máquina//Trabalho Jomi//palavras_1977//palavras.csv",sep=",")
+attach(words)
+library(tree)
+(table(words[1])/8281)*100
+head(words)
+tree.words=tree(classificacao~.,words)
+summary(tree.words)
+plot(tree.words)
+text(tree.words,pretty =0)
+tree.words
+
+
+set.seed(2)
+train=sample(1:nrow(words),7000)
+words.test=words[-train,]
+classificacao.test=classificacao[-train]
+tree.words=tree(classificacao~.,words,subset =train )
+tree.pred =predict(tree.words,words.test,type="class")
+words.table<-table(tree.pred,classificacao.test)
+rate<-sum(diag(words.table))/sum(words.table)
+
+set.seed(3)
+cv.words<-cv.tree(tree.words,FUN=prune.misclass)
+names(cv.carseats)
+cv.carseats
+par(mfrow=c(2,1))
+plot(cv.words$size,cv.words$dev,type="b")
+plot(cv.carseats$k,cv.carseats$dev,type ="b")
+prune.words=prune.misclass(tree.words,best=10)
+par(mfrow=c(1,1))
+plot(prune.words)
+text(prune.words,pretty=0)
+tree.pred=predict(prune.words,words.test,type="class")
+prune.table<-table(tree.pred,classificacao.test)
+rate<-sum(diag(prune.table))/sum(prune.table)
+words<-read.csv("C://Users//rwagn//Documents//R//Aprendizado de Máquina//Trabalho Jomi//palavras_1977//palavras.csv",sep=",")
+
+
+attach(words)
+library(tree)
+(table(words[1])/8281)*100
+head(words)
+tree.words=tree(classificacao~.,words)
+summary(tree.words)
+plot(tree.words)
+text(tree.words,pretty =0)
+tree.words
+
+
+set.seed(2)
+train=sample(1:nrow(words),7000)
+words.test=words[-train,]
+classificacao.test=classificacao[-train]
+tree.words=tree(classificacao~.,words,subset =train )
+tree.pred =predict(tree.words,words.test,type="class")
+words.table<-table(tree.pred,classificacao.test)
+rate<-sum(diag(words.table))/sum(words.table)
+
+set.seed(3)
+cv.words<-cv.tree(tree.words,FUN=prune.misclass)
+names(cv.carseats)
+cv.carseats
+par(mfrow=c(2,1))
+plot(cv.words$size,cv.words$dev,type="b")
+plot(cv.words$k,cv.words$dev,type ="b")
+prune.words=prune.misclass(tree.words,best=10)
+par(mfrow=c(1,1))
+plot(prune.words)
+text(prune.words,pretty=0)
+tree.pred=predict(prune.words,words.test,type="class")
+prune.table<-table(tree.pred,classificacao.test)
+rate<-sum(diag(prune.table))/sum(prune.table)
+
+library(randomForest)
+set.seed(1)
+bag.words=randomForest(classificacao~.,data=words,subset=train,importance=TRUE)
+bag.words
+yhat.bag=predict(bag.words,newdata=words[-train,])
+plot(yhat.bag,words.test)
+abline(0 ,1)
+mean((yhat.bag-words.test)^2)
+importance(bag.words)
+varImpPlot(bag.words)
+
+library(gbm)
+set.seed(1)
+boost.words=gbm(classificacao~.,data=words[train,],distribution="gaussian",n.trees=5000,interaction.depth=1)
+summary(boost.words)
+par(mfrow =c(1 ,2) )
+plot(boost.words,i="rm")
+plot(boost.words,i="lstat")

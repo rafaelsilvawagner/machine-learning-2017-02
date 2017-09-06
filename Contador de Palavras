@@ -1,0 +1,94 @@
+<?php
+
+class ExtratorDePalavras {
+
+// Matriz onde cada linha representa um arquivo processado, a primeira coluna represente a 
+// categoria e a segunda coluna é um dicionário com as palavras presentes no arquivo e sua frequência
+private $linhas = [];
+
+// Tabela com cada palavra encontrada e o total de arquivos onde a palavra foi encontrada
+private $palavras = [];
+
+
+// Esse procedimento é executado uma vez para cada arquivo presente na base de conhecimento,
+// Seu objetivo é popular a matriz de linhas, que será usada na filtragem final
+public function processaArquivo($arquivo) {
+	echo $arquivo."\n";
+	// O conteúdo do arquivo é filtrado por 3 funções, a primeira etapa remove as tags html e deixa
+	// apenas o conteúdo. A segunda etapa altera todas as palavras para letras minúsculas e a
+	// etapa final separa o conteúdo do arquivo em um array de palavras usando qualquer caractere
+	// fora do alfabéto como separador
+	$conteudo = preg_split("/[^a-z]+/i", mb_strtolower(strip_tags(file_get_contents($arquivo))));
+
+	// O tipo de classificação do arquivo é baseado no nome de sua pasta na base de conhecimento
+	$classificacao = explode('/', $arquivo)[1];
+	$this->linhas[] = [ $classificacao, $this->contaPalavras($conteudo) ];
+}
+
+// A função contaPalavras é um helper do procedimento processaArquivo()
+// Seu objetivo é percorrer o array de palavras encontradas no arquivo e gerar uma lista de frequências
+// Além disso, a função tem como efeito colateral a contagem da ocorrência de uma determina palavras
+// em arquivos distintos. 
+// Um primeiro filtro já é aplicado neste momento, que é a contabilização apenas de palavras com 3
+// ou mais caracteres
+private function contaPalavras($conteudo) {
+	$r = [ ]; 
+	foreach ($conteudo as $palavra) {
+		if (empty($palavra) || strlen($palavra) < 3) continue;
+
+		if (!isset($r[$palavra])) {
+			$r[$palavra] = 1;
+			if (!isset($this->palavras[$palavra])) $this->palavras[$palavra] = 1;
+			else $this->palavras[$palavra]++;
+		}
+		else { $r[$palavra]++; }
+	}
+	return $r;
+}
+
+// O procedimento processaResultado() escreve a matriz final em um arquivo CSV
+// Um filtro é construído para excluir palavras que não estejam presentes em 
+// pelo menos raiz²(total de arquivos) 
+// Palavras que ocorrem em TODOS os arquivos também são excluídas neste ponto.
+public function processaResultado($saida) {
+	$total_linhas = count($this->linhas);
+
+	// Primeira etapa: Determinar as palavras relevantes e excluir as demais da lista de palavras
+	$numero_magico = (int)sqrt($total_linhas);
+	$todas_palavras = array_keys(array_filter($this->palavras, 
+		function ($e) use ($total_linhas,$numero_magico) { 
+			return $e != $total_linhas && $e > $numero_magico;
+		}));
+	echo count($todas_palavras).": $total_linhas / $numero_magico\n";
+
+	// Cria o arquivo de saída e excreve o cabeçalho da planilha 
+	$file = fopen($saida, "w");
+	fwrite($file, "classificacao,".implode(",",$todas_palavras)."\n");
+
+	// Etapa final: Escreve as linhas no arquivo de saída percorrendo a matriz de linhas
+	// processadas porém deixando apenas as palavras previamente selecionadas
+	foreach ($this->linhas as $classificacao_palavras) {
+		list($classificacao, $palavras) = $classificacao_palavras;
+		$linha = [ $classificacao ];
+		// Este ponto é crucial para que a ordem das colunas fique correta
+		foreach ($todas_palavras as $palavra) {
+			if (isset($palavras[$palavra])) {
+				$linha[] = $palavras[$palavra];
+			} else {
+				$linha[] = 0; // Zera palavras não presentes no arquivo que gerou essa linha
+			}
+		}
+		fputcsv($file, $linha, ",");
+	}
+
+}
+
+}
+
+$arquivos = new RecursiveIteratorIterator(new RecursiveDirectoryIterator('webkb'));
+$extrator = new ExtratorDePalavras();
+foreach ($arquivos as $arquivo) {
+	if (!is_file($arquivo->getPathname())) continue;
+	$extrator->processaArquivo($arquivo->getPathname());
+}
+$extrator->processaResultado("palavras.csv");

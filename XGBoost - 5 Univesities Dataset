@@ -1,17 +1,18 @@
 ##chama os pacotes necessários
 library(xgboost)
+library(pROC)
 library(caret)   
 library(dplyr)   
 set.seed(1)
 #carrega a base de dados
-words<-read.csv()
+words<-read.csv("C://Users//rwagn//Documents//R//Aprendizado de Máquina//Trabalho Jomi//palavras_1977//palavras.csv",sep=",")
 
 for (i in 1:nrow(words)) {
     words[[i]]<-as.numeric(words[[i]])
 }
 
 # Make split index
-train_index <- sample(1:nrow(words), nrow(words)*0.75)
+train_index <- sample(1:nrow(words), nrow(words)*0.9)
 # Full data set
 data_variables <- as.matrix(words[,-1])
 data_label <- words[,"classificacao"]-1
@@ -29,7 +30,7 @@ numberOfClasses <- length(unique(data_label))
 xgb_params <- list("objective" = "multi:softprob",
                    "eval_metric" = "mlogloss",
                    "num_class" = numberOfClasses)
-nround    <- 50 # number of XGBoost rounds
+nround    <- 100 # number of XGBoost rounds
 cv.nfold  <- 5
 # Fit cv.nfold * cv.nround XGB models and save OOF predictions
 cv_model <- xgb.cv(params = xgb_params,
@@ -38,6 +39,9 @@ cv_model <- xgb.cv(params = xgb_params,
                    nfold = cv.nfold,
                    verbose = FALSE,
                    prediction = TRUE)
+plot(log(cv_model$evaluation_log$test_mlogloss_mean),type="b",main = "Analise do tamanho da Árvore",xlab = "Número de Árvores",ylab = "Log do erro de validação cruzada")
+
+
 
 OOF_prediction <- data.frame(cv_model$pred) %>%
   mutate(max_prob = max.col(., ties.method = "last"),
@@ -48,6 +52,11 @@ head(OOF_prediction)
 confusionMatrix(factor(OOF_prediction$label), 
                 factor(OOF_prediction$max_prob),
                 mode = "everything")
+
+nrounds=82
+
+#plot ROC
+plot.roc(train_label,OOF_prediction$max_prob,print.auc=T,print.auc.y=0.5) 
 
 
 bst_model <- xgb.train(params = xgb_params,
@@ -76,3 +85,11 @@ head(importance_matrix)
 # plot
 gp = xgb.plot.importance(importance_matrix[1:20])
 print(gp) 
+xgb.plot.tree(feature_names = names, model = bst_model,n_first_tree=1)
+
+
+#plot ROC
+plot.roc(test_label,test_prediction$max_prob,print.auc=T,print.auc.y=0.5) 
+
+
+
